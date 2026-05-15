@@ -1,0 +1,11 @@
+{
+  "name": "PostgreSQL Database",
+  "description": "PostgreSQL database provider for MuxCore. Implements the DatabaseProvider contract.",
+  "version": "0.1.0",
+  "icon": "",
+  "author": "Muxcore-Media",
+  "kind": "provider",
+  "capabilities": ["database.sql", "database.migrations", "database.transactions"],
+  "dependencies": [],
+  "homepage": "https://github.com/Muxcore-Media/database-postgres"
+}
