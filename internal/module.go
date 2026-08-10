@@ -6,10 +6,12 @@ import (
 	"log/slog"
 	"net"
 	"os"
+	"sync"
 
 	"google.golang.org/grpc"
 
 	"github.com/Muxcore-Media/core/pkg/contracts"
+	modulesdk "github.com/Muxcore-Media/core/sdk/go/module"
 	"github.com/Muxcore-Media/database-postgres/internal/db"
 	"github.com/Muxcore-Media/database-postgres/internal/server"
 )
@@ -21,6 +23,7 @@ type Module struct {
 	lis      net.Listener
 
 	id       string
+	cfgMu    sync.RWMutex
 	dbCfg    db.Config
 	grpcAddr string
 }
@@ -55,7 +58,7 @@ func (m *Module) Info() contracts.ModuleInfo {
 	return contracts.ModuleInfo{
 		ID:           m.id,
 		Name:         "Database Postgres",
-		Version:      "0.1.0",
+		Version:      "0.1.1",
 		Roles:        []string{"infrastructure"},
 		Description:  "PostgreSQL database provider (pgx)",
 		Author:       "MuxCore",
@@ -65,7 +68,10 @@ func (m *Module) Info() contracts.ModuleInfo {
 }
 
 func (m *Module) Init(ctx context.Context) error {
-	d, err := db.Open(m.dbCfg)
+	m.cfgMu.RLock()
+	cfg := m.dbCfg
+	m.cfgMu.RUnlock()
+	d, err := db.Open(cfg)
 	if err != nil {
 		return fmt.Errorf("open database: %w", err)
 	}
@@ -78,13 +84,14 @@ func (m *Module) Init(ctx context.Context) error {
 		return fmt.Errorf("listen %s: %w", m.grpcAddr, err)
 	}
 	m.lis = lis
-	slog.Info("database-postgres initialized", "addr", m.grpcAddr, "host", m.dbCfg.Host, "database", m.dbCfg.Database)
+	slog.Info("database-postgres initialized", "addr", m.grpcAddr, "host", cfg.Host, "database", cfg.Database)
 	return nil
 }
 
 func (m *Module) Start(ctx context.Context) error {
 	m.grpcSrv = grpc.NewServer()
 	m.srv.RegisterWithGRPC(m.grpcSrv)
+	modulesdk.RegisterSettings(m.grpcSrv, m.id, m)
 	go func() {
 		slog.Info("database-postgres gRPC service started", "addr", m.grpcAddr)
 		if err := m.grpcSrv.Serve(m.lis); err != nil {
