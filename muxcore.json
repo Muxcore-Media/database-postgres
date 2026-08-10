@@ -1,0 +1,9 @@
+{
+  "name": "Database Postgres",
+  "description": "PostgreSQL database provider (pgx)",
+  "version": "0.1.0",
+  "author": "MuxCore",
+  "roles": ["infrastructure"],
+  "capabilities": ["database", "database.postgres"],
+  "contracts": []
+}
