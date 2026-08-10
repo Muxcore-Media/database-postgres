@@ -1,9 +1,15 @@
 {
   "name": "Database Postgres",
   "description": "PostgreSQL database provider (pgx)",
-  "version": "0.1.1",
+  "version": "0.1.2",
   "author": "MuxCore",
-  "roles": ["infrastructure"],
-  "capabilities": ["database", "database.postgres"],
+  "roles": [
+    "infrastructure"
+  ],
+  "capabilities": [
+    "database",
+    "database.postgres",
+    "settings"
+  ],
   "contracts": []
 }

@@ -58,11 +58,11 @@ func (m *Module) Info() contracts.ModuleInfo {
 	return contracts.ModuleInfo{
 		ID:           m.id,
 		Name:         "Database Postgres",
-		Version:      "0.1.1",
+		Version:      "0.1.2",
 		Roles:        []string{"infrastructure"},
 		Description:  "PostgreSQL database provider (pgx)",
 		Author:       "MuxCore",
-		Capabilities: []string{contracts.CapabilityDatabase, "database.postgres"},
+		Capabilities: []string{contracts.CapabilityDatabase, "database.postgres", "settings"},
 		HTTPAddr:     m.grpcAddr,
 	}
 }
