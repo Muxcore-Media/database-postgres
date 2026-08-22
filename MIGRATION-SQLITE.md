@@ -67,9 +67,12 @@ Prefer re-seeding from fixture/smoke paths on a laptop demo rather than perfect 
 ## 5. Verify
 
 ```bash
-# database-postgres module tests (when Postgres is up)
 cd database-postgres && go test -count=1 ./...
+# With Postgres up (docker or lab host):
+../_mvp/scripts/exercise-postgres-path.sh
 ```
+
+**Vault lab (2026-08-22):** live Postgres on vault — `nix-shell -p go postgresql --run 'cd database-postgres && PGHOST=/run/postgresql PGUSER=postgres PGDATABASE=muxcore_pg_exercise PGSSLMODE=disable go test ./...'` — all packages green. Soak stack stays on `database-sqlite`; use `MVP_ENABLE_DATABASE_POSTGRES=1` in `_mvp/run-host.sh` for non-soak trials.
 
 Confirm admin-ui / API still resolve capability `database`, then remove the SQLite process from `up.sh` / installer essentials when you are satisfied.
 
