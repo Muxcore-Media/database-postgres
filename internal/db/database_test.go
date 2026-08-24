@@ -97,7 +97,7 @@ func TestExecQueryMigrate(t *testing.T) {
 	if err != nil {
 		t.Fatalf("query: %v", err)
 	}
-	defer rows.Close()
+	defer func() { _ = rows.Close() }()
 	if !rows.Next() {
 		t.Fatal("expected row")
 	}

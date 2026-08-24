@@ -23,9 +23,9 @@ type Rows struct {
 	rows *sql.Rows
 }
 
-func (r *Rows) Next() bool          { return r.rows.Next() }
+func (r *Rows) Next() bool             { return r.rows.Next() }
 func (r *Rows) Scan(dest ...any) error { return r.rows.Scan(dest...) }
-func (r *Rows) Close() error        { return r.rows.Close() }
+func (r *Rows) Close() error           { return r.rows.Close() }
 
 type Tx struct {
 	tx *sql.Tx
@@ -267,12 +267,12 @@ func (d *Database) Rollback(ctx context.Context, targetVersion int) error {
 	for rows.Next() {
 		var m migInfo
 		if err := rows.Scan(&m.Version, &m.Name, &m.DownSQL); err != nil {
-			rows.Close()
+			_ = rows.Close()
 			return fmt.Errorf("scan migration: %w", err)
 		}
 		toRollback = append(toRollback, m)
 	}
-	rows.Close()
+	_ = rows.Close()
 
 	for _, m := range toRollback {
 		slog.Info("rolling back migration", "version", m.Version, "name", m.Name)
