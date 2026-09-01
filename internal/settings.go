@@ -3,7 +3,10 @@ package internal
 import (
 	"context"
 	"fmt"
+	"log/slog"
+	"strconv"
 	"strings"
+	"time"
 
 	"github.com/Muxcore-Media/core/pkg/contracts"
 	modulesdk "github.com/Muxcore-Media/core/sdk/go/module"
@@ -38,7 +41,7 @@ func (m *Module) settingsDefs() []contracts.SettingDef {
 			Type:        contracts.SettingTypeString,
 			Value:       cfg.Host,
 			Default:     "localhost",
-			Description: "Postgres host (PGHOST)",
+			Description: "Postgres host (PGHOST); use a path such as /run/postgresql for unix sockets",
 			Group:       "Connection",
 		},
 		{
@@ -47,7 +50,7 @@ func (m *Module) settingsDefs() []contracts.SettingDef {
 			Type:        contracts.SettingTypeString,
 			Value:       cfg.Port,
 			Default:     "5432",
-			Description: "Postgres port (PGPORT)",
+			Description: "Postgres port (PGPORT); ignored for unix-socket hosts",
 			Group:       "Connection",
 		},
 		{
@@ -78,16 +81,66 @@ func (m *Module) settingsDefs() []contracts.SettingDef {
 			Group:       "Connection",
 		},
 		{
+			Key:         "schema",
+			Label:       "Schema",
+			Type:        contracts.SettingTypeString,
+			Value:       cfg.EffectiveSchema(),
+			Default:     "public",
+			Description: "Postgres schema / search_path (PGSCHEMA); isolates _migrations per sidecar on shared clusters",
+			Group:       "Connection",
+		},
+		{
 			Key:         "sslmode",
 			Label:       "SSL Mode",
 			Type:        contracts.SettingTypeSelect,
 			Value:       cfg.SSLMode,
 			Default:     "disable",
-			Description: "libpq sslmode (PGSSLMODE)",
+			Description: "libpq sslmode (PGSSLMODE); disable logs a production warning",
 			Group:       "Connection",
 			Options:     []string{"disable", "allow", "prefer", "require", "verify-ca", "verify-full"},
 		},
+		{
+			Key:         "connect_timeout",
+			Label:       "Connect Timeout (seconds)",
+			Type:        contracts.SettingTypeString,
+			Value:       timeoutSettingValue(cfg.ConnectTimeout),
+			Default:     "10",
+			Description: "Seconds to wait for initial Ping (PGCONNECT_TIMEOUT)",
+			Group:       "Pool",
+		},
+		{
+			Key:         "pool_max_open",
+			Label:       "Pool Max Open",
+			Type:        contracts.SettingTypeString,
+			Value:       intSettingValue(cfg.MaxOpenConns, 10),
+			Default:     "10",
+			Description: "database/sql MaxOpenConns (PGPOOL_MAX_OPEN)",
+			Group:       "Pool",
+		},
+		{
+			Key:         "pool_max_idle",
+			Label:       "Pool Max Idle",
+			Type:        contracts.SettingTypeString,
+			Value:       intSettingValue(cfg.MaxIdleConns, 5),
+			Default:     "5",
+			Description: "database/sql MaxIdleConns (PGPOOL_MAX_IDLE)",
+			Group:       "Pool",
+		},
 	}
+}
+
+func timeoutSettingValue(d time.Duration) string {
+	if d <= 0 {
+		return "10"
+	}
+	return strconv.Itoa(int(d.Seconds()))
+}
+
+func intSettingValue(n, def int) string {
+	if n > 0 {
+		return strconv.Itoa(n)
+	}
+	return strconv.Itoa(def)
 }
 
 func (m *Module) updateSetting(key, value string) error {
@@ -98,7 +151,6 @@ func (m *Module) updateSetting(key, value string) error {
 
 	switch key {
 	case "database_url", "DATABASE_URL":
-		// Empty or UI mask means "leave unchanged".
 		if value == "" || value == modulesdk.MaskSecret("x") {
 			return nil
 		}
@@ -130,14 +182,42 @@ func (m *Module) updateSetting(key, value string) error {
 		}
 		cfg.Database = value
 		cfg.URL = ""
+	case "schema", "PGSCHEMA", "search_path":
+		if value == "" {
+			return fmt.Errorf("schema must not be empty")
+		}
+		cfg.Schema = value
+		cfg.URL = ""
 	case "sslmode", "PGSSLMODE":
 		switch value {
 		case "disable", "allow", "prefer", "require", "verify-ca", "verify-full":
 			cfg.SSLMode = value
 			cfg.URL = ""
+			if value == "disable" {
+				slog.Warn("database-postgres: sslmode disable is dev-only; use require in production")
+			}
 		default:
 			return fmt.Errorf("invalid sslmode %q", value)
 		}
+	case "connect_timeout", "PGCONNECT_TIMEOUT":
+		secs, err := strconv.Atoi(value)
+		if err != nil || secs <= 0 {
+			return fmt.Errorf("connect_timeout must be a positive integer")
+		}
+		cfg.ConnectTimeout = time.Duration(secs) * time.Second
+		cfg.URL = ""
+	case "pool_max_open", "PGPOOL_MAX_OPEN":
+		n, err := strconv.Atoi(value)
+		if err != nil || n <= 0 {
+			return fmt.Errorf("pool_max_open must be a positive integer")
+		}
+		cfg.MaxOpenConns = n
+	case "pool_max_idle", "PGPOOL_MAX_IDLE":
+		n, err := strconv.Atoi(value)
+		if err != nil || n < 0 {
+			return fmt.Errorf("pool_max_idle must be >= 0")
+		}
+		cfg.MaxIdleConns = n
 	default:
 		return fmt.Errorf("unknown setting %q", key)
 	}
@@ -159,6 +239,7 @@ func (m *Module) applyDBConfig(cfg db.Config) error {
 	m.database = d
 	m.dbCfg = cfg
 	if old != nil {
+		m.srv.Drain()
 		_ = old.Close(context.Background())
 	}
 	return nil

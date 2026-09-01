@@ -8,7 +8,7 @@ MuxCore sidecar module (`database-postgres`). Workspace deploy and SSH: [`../AGE
 |-------|-------|
 | Directory | `database-postgres` |
 | Capabilities | see muxcore.json |
-| Contracts | none declared |
+| Contracts | DatabaseProvider, DatabaseService, Backupable |
 
 ## Agent rules
 
@@ -22,5 +22,7 @@ MuxCore sidecar module (`database-postgres`). Workspace deploy and SSH: [`../AGE
 
 ```bash
 cd database-postgres
-go test ./...
+nix-shell -p go postgresql --run 'go test ./...'
 ```
+
+Vault unix socket: `PGHOST=/run/postgresql PGUSER=postgres`.

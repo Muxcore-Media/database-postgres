@@ -1,17 +1,18 @@
-# Contributing to database-sqlite
+# Contributing to database-postgres
 
 ## Development Setup
 
 ### Prerequisites
 
 - Go 1.26.x
+- PostgreSQL 16+ (local, Docker, or vault lab socket)
 - golangci-lint (optional but recommended)
 
 ### Clone and build
 
 ```bash
-git clone https://github.com/Muxcore-Media/database-sqlite.git
-cd database-sqlite
+git clone https://github.com/Muxcore-Media/database-postgres.git
+cd database-postgres
 make build
 ```
 
@@ -23,16 +24,20 @@ cd ../core
 MUXCORE_INSECURE_DISABLE_TLS=true ./muxcored
 
 # Terminal 2: start module
-make build && ./database-sqlite --muxcore-mesh-addr localhost:9090
+export PGHOST=localhost PGUSER=muxcore PGPASSWORD=muxcore PGDATABASE=muxcore
+make build && ./database-postgres --muxcore-mesh-addr localhost:9090
 ```
 
 ## Running Tests
 
 ```bash
+docker run --rm -d --name muxcore-pg \
+  -e POSTGRES_USER=muxcore -e POSTGRES_PASSWORD=muxcore -e POSTGRES_DB=muxcore \
+  -p 5432:5432 postgres:16-alpine
 make test
 ```
 
-Tests must not depend on a running muxcored instance. Use mocks where needed.
+Tests must not depend on a running muxcored instance.
 
 ## Linting
 
