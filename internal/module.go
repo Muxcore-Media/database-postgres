@@ -16,6 +16,8 @@ import (
 	"github.com/Muxcore-Media/database-postgres/internal/server"
 )
 
+const defaultGRPCAddr = "127.0.0.1:9701"
+
 type Module struct {
 	database *db.Database
 	srv      *server.Server
@@ -39,7 +41,7 @@ func NewModule(cfg Config) *Module {
 		cfg.ID = "database-postgres"
 	}
 	if cfg.GRPCAddr == "" {
-		cfg.GRPCAddr = ":9701"
+		cfg.GRPCAddr = defaultGRPCAddr
 	}
 	if v := os.Getenv("DATABASE_GRPC_ADDR"); v != "" {
 		cfg.GRPCAddr = v
@@ -62,7 +64,7 @@ func (m *Module) Info() contracts.ModuleInfo {
 		Roles:        []string{"infrastructure"},
 		Description:  "PostgreSQL database provider (pgx)",
 		Author:       "MuxCore",
-		Capabilities: []string{contracts.CapabilityDatabase, "database.postgres", "settings"},
+		Capabilities: []string{contracts.CapabilityDatabase, "database.postgres", "settings", "backupable"},
 		HTTPAddr:     m.grpcAddr,
 	}
 }
@@ -84,7 +86,7 @@ func (m *Module) Init(ctx context.Context) error {
 		return fmt.Errorf("listen %s: %w", m.grpcAddr, err)
 	}
 	m.lis = lis
-	slog.Info("database-postgres initialized", "addr", m.grpcAddr, "host", cfg.Host, "database", cfg.Database)
+	slog.Info("database-postgres initialized", "addr", m.grpcAddr, "host", cfg.Host, "database", cfg.Database, "schema", cfg.EffectiveSchema())
 	return nil
 }
 
@@ -104,6 +106,9 @@ func (m *Module) Start(ctx context.Context) error {
 func (m *Module) Stop(ctx context.Context) error {
 	if m.grpcSrv != nil {
 		m.grpcSrv.GracefulStop()
+	}
+	if m.srv != nil {
+		m.srv.Drain()
 	}
 	if m.database != nil {
 		_ = m.database.Close(ctx)

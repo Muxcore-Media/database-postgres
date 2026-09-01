@@ -1,5 +1,5 @@
 # Binaries
-/database-sqlite
+/database-postgres
 /module
 /cmd/module/module
 
