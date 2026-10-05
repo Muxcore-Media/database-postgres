@@ -1,8 +1,8 @@
 FROM golang:1.26-alpine AS deps
 WORKDIR /deps
 RUN apk add --no-cache git
-RUN git clone --depth 1 https://git.zem.systems/muxcore/core.git core && \
-    git clone --depth 1 https://git.zem.systems/muxcore/contracts-media.git contracts-media
+RUN git clone --depth 1 https://github.com/Muxcore-Media/core.git core && \
+    git clone --depth 1 https://github.com/Muxcore-Media/contracts-media.git contracts-media
 
 FROM golang:1.26-alpine AS builder
 WORKDIR /workspace/database-postgres
