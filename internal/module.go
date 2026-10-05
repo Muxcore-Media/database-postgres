@@ -12,6 +12,7 @@ import (
 
 	"github.com/Muxcore-Media/core/pkg/contracts"
 	modulesdk "github.com/Muxcore-Media/core/sdk/go/module"
+	manifest "github.com/Muxcore-Media/database-postgres"
 	"github.com/Muxcore-Media/database-postgres/internal/db"
 	"github.com/Muxcore-Media/database-postgres/internal/server"
 )
@@ -60,7 +61,7 @@ func (m *Module) Info() contracts.ModuleInfo {
 	return contracts.ModuleInfo{
 		ID:           m.id,
 		Name:         "Database Postgres",
-		Version:      "0.1.2",
+		Version:      modulesdk.ManifestVersion(manifest.ManifestJSON),
 		Roles:        []string{"infrastructure"},
 		Description:  "PostgreSQL database provider (pgx)",
 		Author:       "MuxCore",
